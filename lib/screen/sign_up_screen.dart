@@ -1,60 +1,70 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_auth.dart';
 import 'widgets/custome_clipper.dart';
 
-class SignInPage extends StatefulWidget {
-  const SignInPage({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  State<SignInPage> createState() => _SignInPageState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignInPageState extends State<SignInPage> {
+class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _signed = false;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login(AppAuthProvider authProvider) async {
-    if (!_formKey.currentState!.validate()) return;
+  void _register(AppAuthProvider authProvider) async {
+    if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final name = _nameController.text.trim();
 
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+      final success = await authProvider.signUp(
+          displayName: name, email: email, password: password);
 
-    final success = await authProvider.signIn(email, password);
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signed in successfully')),
-      );
-      _formKey.currentState?.reset();
-      _emailController.clear();
-      _passwordController.clear();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.error ?? 'Sign-in failed')),
-      );
+      if (success) {
+        _signed = true;
+        print(_signed);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Account created successfully')),
+        );
+        _formKey.currentState?.reset();
+        _nameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'Registration failed: Check connecion or Correct Credentials ')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AppAuthProvider>(context);
     final size = MediaQuery.of(context).size;
+    final authProvider = Provider.of<AppAuthProvider>(context);
 
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Top curved header (reuse your clipper)
             ClipPath(
               clipper: TopCurveClipper(),
               child: Container(
@@ -62,7 +72,7 @@ class _SignInPageState extends State<SignInPage> {
                 color: Colors.blueAccent,
                 child: Center(
                   child: Text(
-                    'Welcome Back',
+                    'Create Account',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 32,
@@ -72,22 +82,39 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ),
             ),
-
-            // Form
             Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24),
+                  const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
+                    // Full Name
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Full Name',
+                        prefixIcon: Icon(Icons.person),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Full name is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
                     // Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: const Icon(Icons.email),
+                        prefixIcon: Icon(Icons.email),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -99,7 +126,7 @@ class _SignInPageState extends State<SignInPage> {
                         final emailRegex =
                             RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$');
                         if (!emailRegex.hasMatch(value.trim())) {
-                          return 'Enter a valid email';
+                          return 'Enter a valid email address';
                         }
                         return null;
                       },
@@ -112,7 +139,7 @@ class _SignInPageState extends State<SignInPage> {
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock),
+                        prefixIcon: Icon(Icons.lock),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -129,43 +156,42 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Sign In Button or Loader
+                    // Sign Up Button
                     authProvider.isLoading
                         ? const CircularProgressIndicator()
                         : ElevatedButton(
                             onPressed: () {
-                              _login(authProvider);
-                              Navigator.pushReplacementNamed(context, '/home');
+                              _register(authProvider);
+                              if (_signed == true) {
+                                Navigator.pushReplacementNamed(
+                                    context, '/signin');
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blueAccent,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 60, vertical: 15),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
+                                  borderRadius: BorderRadius.circular(30)),
                             ),
                             child: Text(
-                              'Sign In',
+                              'Sign Up',
                               style: GoogleFonts.poppins(
                                   fontSize: 18, color: Colors.white),
                             ),
                           ),
-
                     const SizedBox(height: 16),
 
-                    // Navigate to Sign Up
                     TextButton(
-                      onPressed: () => Navigator.pushReplacementNamed(
-                        context,
-                        '/signup', // or however you route to SignUpPage
-                      ),
-                      child: const Text("Don't have an account? Sign Up"),
-                    ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Already have an account? Sign In"),
+                    )
                   ],
                 ),
               ),
-            ),
+            )
           ],
         ),
       ),
